@@ -168,6 +168,23 @@
     authScreen.classList.remove('hidden');
   }
 
+  function forceLogout(message) {
+    localStorage.removeItem('social_token');
+    localStorage.removeItem('social_user');
+    token = null; currentUser = null;
+    showAuth();
+    if (message) authError.textContent = message;
+  }
+
+  // Kiểm tra 401 (phiên đăng nhập hết hạn/không hợp lệ) sau mỗi lần gọi API cần đăng nhập
+  function checkAuthFailure(res) {
+    if (res.status === 401) {
+      forceLogout('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.');
+      return true;
+    }
+    return false;
+  }
+
   function toggleAuthMode() {
     mode = mode === 'login' ? 'register' : 'login';
     authError.textContent = '';
@@ -264,6 +281,7 @@
   async function toggleLike(postId, div) {
     if (!token) return;
     const res = await fetch(`${API}/posts/${postId}/like`, { method: 'POST', headers: authHeaders() });
+    if (checkAuthFailure(res)) return;
     const data = await res.json();
     const btn = div.querySelector('.like-btn');
     btn.classList.toggle('liked', data.liked);
@@ -304,6 +322,7 @@
         method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ content })
       });
+      if (checkAuthFailure(res)) return;
       if (res.ok) {
         input.value = '';
         await renderComments(postId, box);
@@ -323,6 +342,7 @@
       method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ content })
     });
+    if (checkAuthFailure(res)) return;
     if (res.ok) { input.value = ''; await loadPosts(); }
   });
 
